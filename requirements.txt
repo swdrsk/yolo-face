@@ -1,9 +1,13 @@
-# Ultralytics requirements
+# YOLOトレーニング
+ultralytics>=8.0.0
+
+# データセット準備（オプション、標準ライブラリのみで動作）
+# Pillow  # 画像処理用（オプション）
 # Usage: pip install -r requirements.txt
 
 # Base ----------------------------------------
 matplotlib>=3.2.2
-numpy>=1.18.5
+numpy>=1.18.5,<2.0.0
 opencv-python>=4.6.0
 Pillow>=7.1.2
 PyYAML>=5.3.1
@@ -12,6 +16,9 @@ scipy>=1.4.1
 torch>=1.7.0
 torchvision>=0.8.1
 tqdm>=4.64.0
+typing-extensions>=4.0.0
+sympy>=1.11.1
+mpmath>=1.2.1
 
 # Logging -------------------------------------
 tensorboard>=2.4.1

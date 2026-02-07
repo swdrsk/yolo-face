@@ -1,19 +1,19 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """
 COCO全体データセットとWIDERFaceデータセットをダウンロード
 
 使用方法:
+    # COCO8のみダウンロード（テスト用、4MB程度）
+    uv run python scripts/download_datasets.py --dataset coco8
+    
+    # WIDERFaceのみダウンロード（アノテーションのみ、~200KB）
+    uv run python scripts/download_datasets.py --dataset widerface
+    
     # 全てダウンロード
-    python scripts/download_datasets.py --all
+    uv run python scripts/download_datasets.py --dataset all
     
-    # COCOのみ
-    python scripts/download_datasets.py --coco
-    
-    # WIDERFaceのみ
-    python scripts/download_datasets.py --wider
-    
-    # ドライラン（実際にダウンロードしない）
-    python scripts/download_datasets.py --all --dry-run
+    # dry-runモード（実際にはダウンロードしない）
+    uv run python scripts/download_datasets.py --dataset all --dry-run
 """
 
 import argparse
@@ -36,6 +36,7 @@ class DatasetDownloader:
             "train_images": "http://images.cocodataset.org/zips/train2017.zip",  # ~18GB
             "val_images": "http://images.cocodataset.org/zips/val2017.zip",  # ~1GB
             "annotations": "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",  # ~241MB
+            "coco8_images": "https://ultralytics.com/assets/coco8.zip", # ~4MB
         }
         
         # WIDERFace Dataset URLs
@@ -142,6 +143,27 @@ class DatasetDownloader:
         
         print("\n✓ COCOデータセット準備完了")
         print(f"  場所: {coco_dir}")
+
+    def download_coco8(self):
+        """COCO8データセットをダウンロード (テスト用)"""
+        print("\n" + "=" * 70)
+        print("COCO8データセット ダウンロード (テスト用)")
+        print("=" * 70)
+        print("\n合計サイズ: ~4MB")
+
+        coco8_dir = self.downloads_dir / "coco8"
+        coco8_dir.mkdir(parents=True, exist_ok=True)
+
+        coco8_zip = coco8_dir / "coco8.zip"
+        self.download_file(
+            self.coco_urls["coco8_images"],
+            coco8_zip,
+            "COCO8 Images and Annotations (~4MB)"
+        )
+        self.extract_zip(coco8_zip, coco8_dir, "COCO8 Images and Annotations")
+
+        print("\n✓ COCO8データセット準備完了")
+        print(f"  場所: {coco8_dir}")
     
     def download_wider(self):
         """WIDERFaceデータセットをダウンロード"""
@@ -203,6 +225,10 @@ downloads/
 │   ├── train2017.zip
 │   ├── val2017.zip
 │   └── annotations_trainval2017.zip
+├── coco8/
+│   ├── images/             # COCO8 images
+│   └── labels/             # COCO8 labels
+│   └── coco8.zip
 ├── WIDER_train/
 │   └── images/             # WIDERFace train images
 ├── WIDER_val/
@@ -228,23 +254,21 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
+  # COCO8のみダウンロード（テスト用）
+  uv run python scripts/download_datasets.py --dataset coco8
+  
+  # WIDERFaceのみダウンロード
+  uv run python scripts/download_datasets.py --dataset widerface
+  
   # 全てダウンロード
-  python scripts/download_datasets.py --all
+  uv run python scripts/download_datasets.py --dataset all
   
-  # COCOのみ
-  python scripts/download_datasets.py --coco
-  
-  # WIDERFaceのみ
-  python scripts/download_datasets.py --wider
-  
-  # ドライラン（実際にはダウンロードしない）
-  python scripts/download_datasets.py --all --dry-run
+  # dry-runモード
+  uv run python scripts/download_datasets.py --dataset all --dry-run
         """
     )
     
     parser.add_argument(
-        "--all",
-        action="store_true",
         help="全てのデータセットをダウンロード"
     )
     parser.add_argument(
