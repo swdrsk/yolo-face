@@ -294,6 +294,19 @@ uv run python scripts/train_yolo.py --batch 8
 uv run python scripts/train_yolo.py --imgsz 416
 ```
 
+### Windows でのインストールエラー (unknown compiler)
+
+Windowsで `uv pip sync` 実行時に `ERROR unknown compiler(s)` と表示される場合、C++コンパイラが不足しています。
+
+**解決策1（推奨）**:
+[Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) をインストールし、セットアップ内で **「C++ によるデスクトップ開発」** を選択してください。
+
+**解決策2（バイナリ強制）**:
+コンパイルを避けてビルド済みバイナリのみをインストールします：
+```bash
+uv pip install --only-binary :all: -r requirements.txt
+```
+
 ### CUDA/GPU エラー
 
 CPUを使用してください：
