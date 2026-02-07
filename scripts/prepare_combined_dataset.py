@@ -16,7 +16,10 @@ from pathlib import Path
 
 
 class DatasetPreparer:
-    def __init__(self, base_dir="/Users/sawada/FaveU/dev/faveu/yolo-face"):
+    def __init__(self, base_dir=None):
+        if base_dir is None:
+            # スクリプトの親ディレクトリ（yolo-face/）をbase_dirとする
+            base_dir = Path(__file__).parent.parent.resolve()
         self.base_dir = Path(base_dir)
         self.downloads_dir = self.base_dir / "downloads"
         self.datasets_dir = self.base_dir / "datasets"
