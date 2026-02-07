@@ -2,6 +2,37 @@
 
 統合データセット（person + face）を使用してYOLOモデルをトレーニングするスクリプトです。
 
+## クイックスタート（初めての方）
+
+ゼロから学習までの最短手順：
+
+```bash
+# 1. uvのインストール（未インストールの場合）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. 仮想環境の作成と依存関係のインストール
+uv venv
+uv pip sync requirements.txt
+
+# 3. データセットのダウンロード（COCO8推奨、数分）
+uv run python scripts/download_datasets.py --dataset coco8
+
+# 4. データセットの統合・準備（YOLO形式に変換）
+uv run python scripts/prepare_combined_dataset.py --dataset coco8
+
+# 5. （オプション）テスト用の小さいデータセット作成（23枚、高速）
+uv run python scripts/subsample_dataset.py --samples 20
+
+# 6A. 小さいデータセットで動作確認（約1分、推奨）
+uv run python scripts/train_yolo.py --data datasets/person_face_small/data.yaml --freeze 10 --epochs 5 --batch 4 --imgsz 320
+
+# 6B. または通常データセットでトレーニング（Freeze学習、推奨）
+uv run python scripts/train_yolo.py --freeze 10 --epochs 30
+
+# 7. モデルエクスポート
+uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt
+```
+
 ## 前提条件
 
 ### 1. 依存関係のインストール
@@ -9,6 +40,14 @@
 uvを使用している場合（推奨）：
 
 ```bash
+# uvのインストール（未インストールの場合）
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 仮想環境の作成
+uv venv
+
+# 依存関係のインストール
 uv pip sync requirements.txt
 ```
 
@@ -18,16 +57,43 @@ uv pip sync requirements.txt
 pip install -r requirements.txt
 ```
 
-### 2. データセットの準備
+### 2. データセットのダウンロード
 
-先にデータセットを作成してください：
+データセットを自動でダウンロードします：
 
 ```bash
-# COCO8 + WIDERFace（テスト用）
+# COCO8 + WIDERFace（テスト用、推奨）
+uv run python scripts/download_datasets.py --dataset coco8
+
+# または COCO全体 + WIDERFace（本番用、大容量）
+uv run python scripts/download_datasets.py --dataset coco
+```
+
+**注意**: COCO全体データセットは数十GB以上のサイズになります。最初はCOCO8で試すことを推奨します。
+
+### 3. データセットの統合・準備
+
+ダウンロードしたデータセットをYOLO形式に変換して統合します：
+
+```bash
+# COCO8 + WIDERFaceを統合（テスト用）
 uv run python scripts/prepare_combined_dataset.py --dataset coco8
 
-# または COCO全体 + WIDERFace（本番用）
+# または COCO全体 + WIDERFaceを統合（本番用）
 uv run python scripts/prepare_combined_dataset.py --dataset coco
+```
+
+これにより、`datasets/person_face/`ディレクトリに統合データセットが作成されます。
+
+### 4. （オプション）動作確認用の小さいデータセット作成
+
+学習速度を確認するために、小さいデータセットを作成できます：
+
+```bash
+# 各クラス20枚程度にサンプリング（高速テスト用）
+uv run python scripts/subsample_dataset.py --samples 20
+
+# 出力: datasets/person_face_small/
 ```
 
 ## 使用方法
@@ -144,19 +210,57 @@ uv run python scripts/train_yolo.py --freeze 10 --epochs 30
 
 ## 出力
 
+### モデル保存先
+
 トレーニング結果は以下のディレクトリに保存されます：
 
+**デフォルト（`--name`未指定時）**:
 ```
 runs/detect/train/
-├── weights/
-│   ├── best.pt       # 最良モデル
-│   └── last.pt       # 最終モデル
-├── results.png       # トレーニング結果グラフ
-├── confusion_matrix.png
-├── F1_curve.png
-├── P_curve.png
-├── R_curve.png
-└── PR_curve.png
+```
+
+**カスタム名指定時** (`--name train_custom`の場合):
+```
+runs/detect/train_custom/
+```
+
+**プロジェクトとカスタム名指定時** (`--project my_project --name experiment1`の場合):
+```
+my_project/experiment1/
+```
+
+### ディレクトリ構造
+
+```
+runs/detect/train/              # 保存先ディレクトリ（--nameで変更可能）
+├── weights/                    # モデル重みファイル
+│   ├── best.pt                 # 最良モデル（validation精度最高）
+│   └── last.pt                 # 最終エポックのモデル
+├── results.csv                 # トレーニング結果（CSV）
+├── results.png                 # トレーニング結果グラフ
+├── confusion_matrix.png        # 混同行列
+├── F1_curve.png               # F1スコア曲線
+├── P_curve.png                # Precision曲線
+├── R_curve.png                # Recall曲線
+└── PR_curve.png               # Precision-Recall曲線
+```
+
+### モデルエクスポート
+
+学習済みモデルを他の形式にエクスポートできます：
+
+```bash
+# TorchScript形式（デフォルト）
+uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt
+
+# ONNX形式（広くサポート）
+uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt --format onnx
+
+# Core ML形式（iOS/macOS用）
+uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt --format coreml
+
+# 複数形式を一度にエクスポート
+uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt --format onnx torchscript coreml
 ```
 
 ## トレーニング後の推論
