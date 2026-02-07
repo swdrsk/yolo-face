@@ -253,7 +253,7 @@ runs/detect/train/              # 保存先ディレクトリ（--nameで変更�
 # TorchScript形式（デフォルト）
 uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt
 
-# ONNX形式（広くサポート）
+# ONNX形式（広くサポート）vsv
 uv run python scripts/export_model.py --weights runs/detect/train/weights/best.pt --format onnx
 
 # Core ML形式（iOS/macOS用）
@@ -305,6 +305,15 @@ Windowsで `uv pip sync` 実行時に `ERROR unknown compiler(s)` と表示さ�
 コンパイルを避けてビルド済みバイナリのみをインストールします：
 ```bash
 uv pip install --only-binary :all: -r requirements.txt
+```
+
+### Windows で GPU (CUDA) が検出されない
+
+Windows環境でNVIDIA GPUが認識されない（`CUDA available: False`）場合は、CPU版のPyTorchがインストールされている可能性があります。以下のコマンドでCUDA対応版を強制インストールしてください：
+
+```bash
+# CUDA 12.4対応版をインストールする場合
+uv pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu124
 ```
 
 ### CUDA/GPU エラー
