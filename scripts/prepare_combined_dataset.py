@@ -153,8 +153,9 @@ class DatasetPreparer:
         person_count = 0
         person_images = 0
         
-        # COCOのpersonクラスID（COCO 80クラスの中でpersonはID=0）
-        PERSON_CLASS_ID = 0
+        # COCOのpersonクラスID（COCO 80クラスの中でpersonはID=1）
+        # 注: YOLO TXT形式（coco8など）では0ですが、JSONアノテーションでは1です
+        PERSON_CLASS_ID = 1
         
         for split in ["train", "val"]:
             split_name = f"{split}2017"
