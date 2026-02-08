@@ -37,6 +37,9 @@ uv run python scripts/export_model.py --weights runs/detect/train/weights/best.p
 
 ### 1. 依存関係のインストール
 
+**推奨Pythonバージョン: 3.10 〜 3.12**
+（※3.13以上の最新バージョンはPyTorch等のライブラリが未対応の場合があります）
+
 uvを使用している場合（推奨）：
 
 ```bash
@@ -44,8 +47,8 @@ uvを使用している場合（推奨）：
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 仮想環境の作成
-uv venv
+# 仮想環境の作成（Python 3.12を指定）
+uv venv --python 3.12
 
 # 依存関係のインストール
 uv pip sync requirements.txt
@@ -186,6 +189,20 @@ uv run python scripts/train_yolo.py --device 0,1
 | yolo11m | 20.1M | 中 | 高 |
 | yolo11l | 25.3M | 遅い | 高 |
 | yolo11x | 56.9M | 最遅 | 最高 |
+
+## トレーニングログの読み方
+
+トレーニング中、ターミナルには以下のような進捗が表示されます。**Loss（損失）の数値は低いほど優秀です。**
+
+| 項目 | 意味 | 理想的な傾向 |
+| :--- | :--- | :--- |
+| **box_loss** | 枠の位置のズレ。正解と予測の重なり具合。 | 学習が進むにつれ減少 |
+| **cls_loss** | クラス分類のミス。物体が何かを当てる精度。 | 学習が進むにつれ減少 |
+| **dfl_loss** | 枠の境界線の精密さ。 | 学習が進むにつれ減少 |
+| **mAP50** | 精度。0.5（50%）以上の重なりで正解とした時のスコア。 | **高いほど良い (1.0が最高)** |
+| **mAP50-95** | より厳しい基準での平均精度。 | **高いほど良い (1.0が最高)** |
+
+これらのLoss（誤差）が右肩下がりに減少していれば、学習は順調です。
 
 ## Freeze学習について
 
