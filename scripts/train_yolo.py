@@ -29,6 +29,7 @@ def train(
     epochs=50,
     batch=16,
     imgsz=640,
+    workers=8,
     device="",
     project="runs/detect",
     name="train",
@@ -48,6 +49,7 @@ def train(
         epochs: トレーニングエポック数
         batch: バッチサイズ
         imgsz: 入力画像サイズ
+        workers: データロードのワーカー数（Windowsでエラーが出る場合は0を推奨）
         device: 使用デバイス（""=自動、"cpu", "0", "0,1"など）
         project: プロジェクトディレクトリ
         name: 実験名
@@ -91,6 +93,7 @@ def train(
         "epochs": epochs,
         "batch": batch,
         "imgsz": imgsz,
+        "workers": workers,
         "device": device,
         "project": project,
         "name": name,
@@ -138,8 +141,8 @@ def main():
   # より大きなモデルで長時間トレーニング
   uv run python scripts/train_yolo.py --model yolo26l --epochs 100
   
-  # カスタムバッチサイズ
-  uv run python scripts/train_yolo.py --batch 32 --imgsz 640
+  # バッチサイズとワーカー数の指定
+  uv run python scripts/train_yolo.py --batch 32 --workers 0
   
   # 事前学習済みモデルから継続
   uv run python scripts/train_yolo.py --weights runs/detect/train/weights/best.pt --epochs 50
@@ -198,6 +201,13 @@ def main():
         type=int,
         default=640,
         help="入力画像サイズ (デフォルト: 640)"
+    )
+    
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="データロードのワーカー数 (Windowsでエラーが出る場合は0を指定。デフォルト: 8)"
     )
     
     parser.add_argument(
@@ -264,6 +274,7 @@ def main():
         epochs=args.epochs,
         batch=args.batch,
         imgsz=args.imgsz,
+        workers=args.workers,
         device=args.device,
         project=args.project,
         name=args.name,

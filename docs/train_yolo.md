@@ -208,6 +208,7 @@ uv run python scripts/train_yolo.py --device 0,1
 | `--no-pretrained` | `False` | COCO事前学習済みモデルを使用しない |
 | `--freeze` | `None` | フリーズするレイヤー数（10推奨、0で無効） |
 | `--resume` | `False` | 中断した場所から学習を完全に再開 |
+| `--workers` | `8` | データロードのワーカー数（Windowsエラー時は0を指定） |
 
 ## モデルサイズ
 
@@ -244,6 +245,17 @@ uv run python scripts/train_yolo.py --device 0,1
 | **mAP50-95** | より厳しい基準での平均精度。 | **高いほど良い (1.0が最高)** |
 
 これらのLoss（誤差）が右肩下がりに減少していれば、学習は順調です。
+
+## よくあるエラーと対処法
+
+### RuntimeError: Couldn't open shared event:
+
+Windows環境（または一部のDocker環境）でマルチプロセス・データロードが正常に動作しない場合に発生します。
+
+**対処法**: `--workers 0` を指定して、メインプロセスのみでデータをロードするようにします。
+```bash
+uv run python scripts/train_yolo.py --workers 0
+```
 
 ## Freeze学習について
 
