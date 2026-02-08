@@ -19,6 +19,7 @@
 
 import argparse
 from pathlib import Path
+import yaml
 from ultralytics import YOLO
 
 
@@ -31,7 +32,7 @@ def train(
     imgsz=640,
     workers=8,
     device="",
-    project="runs/detect",
+    project="runs",
     name="train",
     exist_ok=False,
     pretrained=True,
@@ -70,10 +71,48 @@ def train(
     print(f"デバイス: {device if device else '自動検出'}")
     if freeze is not None and freeze > 0:
         print(f"フリーズレイヤー数: {freeze}（短時間学習モード）")
+    
+    # --- Resume/Extension のための特別処理 ---
+    if resume:
+        # 1. 重みの自動検知（指定がない場合、名前から探す）
+        if not weights:
+            print(f"Resume: 学習ディレクトリ '{name}' 内の 'last.pt' を探索中...")
+            # カレントディレクトリ以下を広く再帰的に探す
+            base_search = Path.cwd()
+            for p in base_search.rglob("last.pt"):
+                # 親ディレクトリ構造をチェック
+                if p.parent.name == "weights" and p.parent.parent.name == name:
+                    weights = str(p.absolute())
+                    print(f"✓ 発見: {weights}")
+                    break
+        
+        # 2. 完走済み学習の延長対応 (args.yamlの書き換え)
+        if weights:
+            save_dir = Path(weights).parent.parent
+            args_path = save_dir / "args.yaml"
+            if args_path.exists():
+                with open(args_path, 'r', encoding='utf-8') as f:
+                    existing_args = yaml.safe_load(f)
+                
+                prev_epochs = existing_args.get('epochs', 0)
+                if epochs > prev_epochs:
+                    print(f"延長学習を検知: {prev_epochs} -> {epochs} エポック")
+                    existing_args['epochs'] = epochs
+                    with open(args_path, 'w', encoding='utf-8') as f:
+                        yaml.safe_dump(existing_args, f)
+                    print(f"✓ {args_path} の目標エポック数を更新しました。")
+                elif epochs != 50:
+                    print(f"Resume継続: 目標エポック {prev_epochs}")
+        else:
+            print(f"警告: 学習ディレクトリ '{name}' または 'last.pt' が見つかりません。")
     print()
     
     # モデルをロード
-    if weights:
+    if resume and weights:
+        # Resumeを成功させるには、YOLOのコンストラクタに last.pt を渡す必要がある
+        print(f"Resume実行: {weights} から再開")
+        yolo_model = YOLO(weights)
+    elif weights:
         print(f"カスタム重みをロード: {weights}")
         yolo_model = YOLO(weights)
     else:
@@ -220,8 +259,8 @@ def main():
     parser.add_argument(
         "--project",
         type=str,
-        default="runs/detect",
-        help="プロジェクトディレクトリ (デフォルト: runs/detect)"
+        default="runs",
+        help="プロジェクトディレクトリ (デフォルト: runs)"
     )
     
     parser.add_argument(

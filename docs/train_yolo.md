@@ -147,6 +147,18 @@ uv run python scripts/train_yolo.py
 uv run python scripts/train_yolo.py --freeze 10 --epochs 30
 ```
 
+### 学習を延長する（完走済みの場合）
+
+もし指定したエポック数（例：10）を完走した後に、「あと10エポック追加したい」という場合は、以下の **CLIコマンド** を使用するのが最も確実です。Python API経由では「完走済み」と判定されて再開できないことがありますが、CLIではエポック数の上書きが可能です。
+
+```bash
+# 20エポックまで延長して再開（last.ptを指定）
+yolo train resume model=runs/detect/train/weights/last.pt epochs=20
+```
+
+> [!TIP]
+> この方法であれば、**オプティマイザの状態や学習率の減衰状態を完全に維持**したまま、シームレスに学習を再開できます。
+
 ### カスタム設定
 
 #### より大きなモデルで長時間トレーニング（通常学習）
