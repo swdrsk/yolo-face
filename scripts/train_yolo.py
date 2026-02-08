@@ -20,6 +20,8 @@
 import argparse
 from pathlib import Path
 import yaml
+import torch
+import shutil
 from ultralytics import YOLO
 
 
@@ -83,12 +85,46 @@ def train(
                 # 親ディレクトリ構造をチェック
                 if p.parent.name == "weights" and p.parent.parent.name == name:
                     weights = str(p.absolute())
+                    save_dir = p.parent.parent
                     print(f"✓ 発見: {weights}")
                     break
-        
-        # 2. 完走済み学習の延長対応 (args.yamlの書き換え)
-        if weights:
+        elif weights: # weightsが直接指定されている場合
             save_dir = Path(weights).parent.parent
+
+        if save_dir:
+            last_pt_path = save_dir / "weights" / "last.pt"
+            if last_pt_path.exists():
+                weights = str(last_pt_path)
+                print(f"Resume: 最終チェックポイントをロード: {weights}")
+                
+                # --- [重要] 完走済み学習の内部メタデータ修正ロジック ---
+                try:
+                    # weights_only=False は信頼できるローカルファイルなので許可
+                    ckpt = torch.load(weights, map_location='cpu')
+                    
+                    # 完走している場合、epoch は通常 -1 にセットされている
+                    if ckpt.get('epoch') == -1:
+                        prev_total_epochs = ckpt.get('train_args', {}).get('epochs', 0)
+                        
+                        if epochs > prev_total_epochs:
+                            print(f"延長学習のための内部メタデータ修正を開始: {prev_total_epochs} -> {epochs}")
+                            # 1. epoch を「完走直前」の状態 (n-1) に戻す
+                            ckpt['epoch'] = prev_total_epochs - 1
+                            # 2. 内部の train_args も更新（YOLOがこちらを優先する場合があるため）
+                            if 'train_args' in ckpt:
+                                ckpt['train_args']['epochs'] = epochs
+                            
+                            # 3. 上書き保存 (念のためバックアップ)
+                            backup_path = last_pt_path.with_suffix('.pt.bak')
+                            if not backup_path.exists():
+                                shutil.copy2(last_pt_path, backup_path)
+                            
+                            torch.save(ckpt, last_pt_path)
+                            print(f"✓ {last_pt_path.name} の内部メタデータを更新しました。")
+                except Exception as e:
+                    print(f"警告: チェックポイントのメタデータ修正中にエラーが発生しました: {e}")
+            
+            # 既存の args.yaml 書き換え（ディスク上の設定）
             args_path = save_dir / "args.yaml"
             if args_path.exists():
                 with open(args_path, 'r', encoding='utf-8') as f:
@@ -96,11 +132,11 @@ def train(
                 
                 prev_epochs = existing_args.get('epochs', 0)
                 if epochs > prev_epochs:
-                    print(f"延長学習を検知: {prev_epochs} -> {epochs} エポック")
+                    print(f"args.yaml の目標エポック数を更新: {prev_epochs} -> {epochs}")
                     existing_args['epochs'] = epochs
                     with open(args_path, 'w', encoding='utf-8') as f:
                         yaml.safe_dump(existing_args, f)
-                    print(f"✓ {args_path} の目標エポック数を更新しました。")
+                    print(f"✓ {args_path} を更新しました。")
                 elif epochs != 50:
                     print(f"Resume継続: 目標エポック {prev_epochs}")
         else:
