@@ -110,17 +110,20 @@ uv run python scripts/subsample_dataset.py --samples 20
 # 顔検出用モデル (akanametov/yolo-face v12m)
 curl -L -o yolov12m-face.pt https://github.com/akanametov/yolo-face/releases/download/1.0.0/yolov12m-face.pt
 
-# 人検出用モデル (Ultralytics v12m)
-curl -L -o yolov12m.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov12m.pt
+# 人検出用モデル (Ultralytics yolo12m)
+# ※初回実行時に自動ダウンロードされますが、手動で行う場合は以下
+curl -L -o yolo12m.pt https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo12m.pt
 ```
 
 #### 実行
-```bash
-# 小規模セットでテスト
-uv run python scripts/augment_labels.py --dataset datasets/person_face_small
+バッチ処理に対応しており、GPU環境では `--batch` を増やすことで大幅に高速化されます。
 
-# 本番データセット全体に適用
-uv run python scripts/augment_labels.py --dataset datasets/person_face
+```bash
+# 小規模セットでテスト (バッチサイズ 4)
+uv run python scripts/augment_labels.py --dataset datasets/person_face_small --batch 4
+
+# 本番データセット全体に適用 (GPU環境推奨、バッチサイズ 32など)
+uv run python scripts/augment_labels.py --dataset datasets/person_face --batch 32
 ```
 
 ---

@@ -35,7 +35,7 @@ def calculate_iou(box1, box2):
 
     return inter_area / union_area if union_area > 0 else 0
 
-def augment_labels(dataset_dir, face_model_path, person_model_path, conf=0.3, iou_threshold=0.5):
+def augment_labels(dataset_dir, face_model_path, person_model_path, conf=0.3, iou_threshold=0.5, batch_size=16):
     dataset_dir = Path(dataset_dir)
     images_dir = dataset_dir / "images"
     labels_dir = dataset_dir / "labels"
@@ -57,85 +57,113 @@ def augment_labels(dataset_dir, face_model_path, person_model_path, conf=0.3, io
             continue
 
         image_files = list(split_images.glob("*.jpg")) + list(split_images.glob("*.png"))
-        print(f"\n{split} セットの処理中 ({len(image_files)} 枚)...")
+        if not image_files:
+            continue
 
-        for img_path in tqdm(image_files):
-            label_path = split_labels / f"{img_path.stem}.txt"
+        print(f"\n{split} セットの処理中 ({len(image_files)} 枚, batch_size={batch_size})...")
+
+        # バッチ処理
+        for i in tqdm(range(0, len(image_files), batch_size)):
+            batch_paths = image_files[i : i + batch_size]
             
-            # 現在のラベルを読み込み
-            existing_labels = []
-            if label_path.exists():
-                with open(label_path, 'r') as f:
-                    for line in f:
-                        parts = line.strip().split()
-                        if len(parts) >= 5:
-                            existing_labels.append({
-                                'class': int(parts[0]),
-                                'bbox': [float(x) for x in parts[1:5]]
-                            })
+            # 1. 各画像の現状ラベルを読み込む & 補完が必要か判定
+            batch_info = []
+            for img_path in batch_paths:
+                label_path = split_labels / f"{img_path.stem}.txt"
+                existing_labels = []
+                if label_path.exists():
+                    with open(label_path, 'r') as f:
+                        for line in f:
+                            parts = line.strip().split()
+                            if len(parts) >= 5:
+                                existing_labels.append({
+                                    'class': int(parts[0]),
+                                    'bbox': [float(x) for x in parts[1:5]]
+                                })
+                
+                has_person = any(l['class'] == PERSON_CLASS_ID for l in existing_labels)
+                has_face = any(l['class'] == FACE_CLASS_ID for l in existing_labels)
+                
+                batch_info.append({
+                    'img_path': img_path,
+                    'label_path': label_path,
+                    'existing': existing_labels,
+                    'needs_face': not has_face,
+                    'needs_person': not has_person,
+                    'new_to_write': []
+                })
 
-            # 既にどのようなラベルを持っているか（統計用）
-            has_person = any(l['class'] == PERSON_CLASS_ID for l in existing_labels)
-            has_face = any(l['class'] == FACE_CLASS_ID for l in existing_labels)
+            # 2. 一括顔検出
+            face_targets = [info['img_path'] for info in batch_info if info['needs_face']]
+            if face_targets:
+                face_results = face_model.predict(face_targets, conf=conf, verbose=False, batch=batch_size)
+                
+                # 結果を元の画像に紐付け
+                target_idx = 0
+                for info in batch_info:
+                    if info['needs_face']:
+                        res = face_results[target_idx]
+                        for box in res.boxes:
+                            xywhn = box.xywhn[0].tolist()
+                            # 重複チェック
+                            is_duplicate = False
+                            for existing in info['existing']:
+                                if existing['class'] == FACE_CLASS_ID:
+                                    if calculate_iou(xywhn, existing['bbox']) > iou_threshold:
+                                        is_duplicate = True
+                                        break
+                            if not is_duplicate:
+                                info['new_to_write'].append(f"{FACE_CLASS_ID} {' '.join(map(str, xywhn))}")
+                                info['existing'].append({'class': FACE_CLASS_ID, 'bbox': xywhn})
+                        target_idx += 1
 
-            new_labels_to_write = []
+            # 3. 一括人検出
+            person_targets = [info['img_path'] for info in batch_info if info['needs_person']]
+            if person_targets:
+                person_results = person_model.predict(person_targets, conf=conf, verbose=False, batch=batch_size)
+                
+                target_idx = 0
+                for info in batch_info:
+                    if info['needs_person']:
+                        res = person_results[target_idx]
+                        for box in res.boxes:
+                            if int(box.cls[0]) == 0: # person
+                                xywhn = box.xywhn[0].tolist()
+                                is_duplicate = False
+                                for existing in info['existing']:
+                                    if existing['class'] == PERSON_CLASS_ID:
+                                        if calculate_iou(xywhn, existing['bbox']) > iou_threshold:
+                                            is_duplicate = True
+                                            break
+                                if not is_duplicate:
+                                    info['new_to_write'].append(f"{PERSON_CLASS_ID} {' '.join(map(str, xywhn))}")
+                                    info['existing'].append({'class': PERSON_CLASS_ID, 'bbox': xywhn})
+                        target_idx += 1
 
-            # 1. 顔検出 (全画像に対して実行し、既存ラベルと重複しないものだけ追加)
-            results = face_model.predict(img_path, conf=conf, verbose=False)
-            for res in results:
-                for box in res.boxes:
-                    xywhn = box.xywhn[0].tolist()
-                    # 既存の全顔ラベルと比較
-                    is_duplicate = False
-                    for existing in existing_labels:
-                        if existing['class'] == FACE_CLASS_ID:
-                            if calculate_iou(xywhn, existing['bbox']) > iou_threshold:
-                                is_duplicate = True
-                                break
-                    if not is_duplicate:
-                        new_labels_to_write.append(f"{FACE_CLASS_ID} {' '.join(map(str, xywhn))}")
-                        # 重複チェックのために既存リストにも追加
-                        existing_labels.append({'class': FACE_CLASS_ID, 'bbox': xywhn})
-
-            # 2. 人検出 (全画像に対して実行)
-            results = person_model.predict(img_path, conf=conf, verbose=False)
-            for res in results:
-                for box in res.boxes:
-                    if int(box.cls[0]) == 0: #person
-                        xywhn = box.xywhn[0].tolist()
-                        is_duplicate = False
-                        for existing in existing_labels:
-                            if existing['class'] == PERSON_CLASS_ID:
-                                if calculate_iou(xywhn, existing['bbox']) > iou_threshold:
-                                    is_duplicate = True
-                                    break
-                        if not is_duplicate:
-                            new_labels_to_write.append(f"{PERSON_CLASS_ID} {' '.join(map(str, xywhn))}")
-                            existing_labels.append({'class': PERSON_CLASS_ID, 'bbox': xywhn})
-
-            # 新しいラベルがあれば追記
-            if new_labels_to_write:
-                with open(label_path, 'a') as f:
-                    for nl in new_labels_to_write:
-                        # ファイルが空でない場合に改行を入れる
-                        if label_path.stat().st_size > 0:
-                            f.write(f"\n{nl}")
-                        else:
-                            f.write(nl)
-                            f.write("\n") # ensure newline for next
+            # 4. 書き出し
+            for info in batch_info:
+                if info['new_to_write']:
+                    with open(info['label_path'], 'a') as f:
+                        for nl in info['new_to_write']:
+                            if info['label_path'].stat().st_size > 0:
+                                f.write(f"\n{nl}")
+                            else:
+                                f.write(nl)
+                                f.write("\n")
 
     print("\n✓ ラベル補正が完了しました。")
 
 def main():
-    parser = argparse.ArgumentParser(description="不完全なデータセットに擬似ラベルを付与する")
+    parser = argparse.ArgumentParser(description="不完全なデータセットに擬似ラベルを付与する（バッチ処理対応）")
     parser.add_argument("--dataset", type=str, default="datasets/person_face", help="対象データセットのディレクトリ")
     parser.add_argument("--face-model", type=str, default="yolov12m-face.pt", help="顔検出用モデル")
-    parser.add_argument("--person-model", type=str, default="yolov12m.pt", help="人検出用モデル")
+    parser.add_argument("--person-model", type=str, default="yolo12m.pt", help="人検出用モデル")
     parser.add_argument("--conf", type=float, default=0.3, help="信頼度しきい値")
+    parser.add_argument("--batch", type=int, default=16, help="バッチサイズ")
     
     args = parser.parse_args()
     
-    augment_labels(args.dataset, args.face_model, args.person_model, args.conf)
+    augment_labels(args.dataset, args.face_model, args.person_model, args.conf, batch_size=args.batch)
 
 if __name__ == "__main__":
     main()
