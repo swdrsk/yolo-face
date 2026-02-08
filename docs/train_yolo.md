@@ -167,6 +167,17 @@ uv run python scripts/train_yolo.py --batch 32 --imgsz 640
 uv run python scripts/train_yolo.py --weights runs/detect/train/weights/best.pt --epochs 50
 ```
 
+#### 学習の中断から完全に再開（Resume）
+
+停電やマシントラブル、意図的な中断から、オプティマイザの状態（学習率スケジューラ等）を含めて完全に元の状態から再開する場合：
+
+```bash
+uv run python scripts/train_yolo.py --resume
+```
+
+> [!NOTE]
+> `--resume` を使用すると、最後に保存された `runs/detect/train/weights/last.pt` を自動的に探し出し、エポック数や学習率の状態を完全に復元して再開します。
+
 #### デバイス指定
 
 ```bash
@@ -196,6 +207,7 @@ uv run python scripts/train_yolo.py --device 0,1
 | `--exist-ok` | `False` | 既存ディレクトリを上書き |
 | `--no-pretrained` | `False` | COCO事前学習済みモデルを使用しない |
 | `--freeze` | `None` | フリーズするレイヤー数（10推奨、0で無効） |
+| `--resume` | `False` | 中断した場所から学習を完全に再開 |
 
 ## モデルサイズ
 

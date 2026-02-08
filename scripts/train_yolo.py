@@ -35,6 +35,7 @@ def train(
     exist_ok=False,
     pretrained=True,
     freeze=None,
+    resume=False,
     verbose=True
 ):
     """
@@ -101,6 +102,7 @@ def train(
         "save_period": 10,  # 10エポックごとに保存
         "plots": True,  # トレーニングプロットを作成
         "val": True,  # 検証を実行
+        "resume": resume,  # 中断した場所から再開
     }
     
     # Freezeオプション（短時間学習用）
@@ -145,8 +147,8 @@ def main():
   # CPU使用
   uv run python scripts/train_yolo.py --device cpu
   
-  # 複数GPU使用
-  uv run python scripts/train_yolo.py --device 0,1
+  # 学習を中断した場所から再開
+  uv run python scripts/train_yolo.py --resume
         """
     )
     
@@ -238,6 +240,12 @@ def main():
         help="フリーズするレイヤー数（短時間学習用。10推奨。0で無効）"
     )
     
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="中断した場所から学習を再開 (last.ptが必要)"
+    )
+    
     args = parser.parse_args()
     
     # データファイルの存在確認
@@ -261,7 +269,8 @@ def main():
         name=args.name,
         exist_ok=args.exist_ok,
         pretrained=not args.no_pretrained,
-        freeze=args.freeze
+        freeze=args.freeze,
+        resume=args.resume
     )
 
 
