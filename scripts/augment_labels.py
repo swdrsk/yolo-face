@@ -129,8 +129,8 @@ def augment_labels(dataset_dir, face_model_path, person_model_path, conf=0.3, io
 def main():
     parser = argparse.ArgumentParser(description="不完全なデータセットに擬似ラベルを付与する")
     parser.add_argument("--dataset", type=str, default="datasets/person_face", help="対象データセットのディレクトリ")
-    parser.add_argument("--face-model", type=str, default="face-yolo11m.pt", help="顔検出用モデル")
-    parser.add_argument("--person-model", type=str, default="yolo11m.pt", help="人検出用モデル")
+    parser.add_argument("--face-model", type=str, default="yolov12m-face.pt", help="顔検出用モデル")
+    parser.add_argument("--person-model", type=str, default="yolov12m.pt", help="人検出用モデル")
     parser.add_argument("--conf", type=float, default=0.3, help="信頼度しきい値")
     
     args = parser.parse_args()

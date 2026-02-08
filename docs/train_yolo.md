@@ -107,11 +107,11 @@ uv run python scripts/subsample_dataset.py --samples 20
 補正に使用する高精度なモデルをダウンロードします：
 
 ```bash
-# 顔検出用モデル (akanametov/yolo-face)
-curl -L -o face-yolo11m.pt https://github.com/akanametov/yolo-face/releases/download/v1.0/yolov11m-face.pt
+# 顔検出用モデル (akanametov/yolo-face v12m)
+curl -L -o yolov12m-face.pt https://github.com/akanametov/yolo-face/releases/download/1.0.0/yolov12m-face.pt
 
-# 人検出用モデル (Ultralytics)
-curl -L -o yolo11m.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11m.pt
+# 人検出用モデル (Ultralytics v12m)
+curl -L -o yolov12m.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov12m.pt
 ```
 
 #### 実行
