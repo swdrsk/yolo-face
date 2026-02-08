@@ -99,6 +99,32 @@ uv run python scripts/subsample_dataset.py --samples 20
 # 出力: datasets/person_face_small/
 ```
 
+### 5. ラベル自動補正（擬似ラベル付与）
+
+「身体のみ」または「顔のみ」のデータセットに足りないラベルを自動補完します。
+
+#### 補正用モデルの準備
+補正に使用する高精度なモデルをダウンロードします：
+
+```bash
+# 顔検出用モデル (akanametov/yolo-face)
+curl -L -o face-yolo11m.pt https://github.com/akanametov/yolo-face/releases/download/v1.0/yolov11m-face.pt
+
+# 人検出用モデル (Ultralytics)
+curl -L -o yolo11m.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11m.pt
+```
+
+#### 実行
+```bash
+# 小規模セットでテスト
+uv run python scripts/augment_labels.py --dataset datasets/person_face_small
+
+# 本番データセット全体に適用
+uv run python scripts/augment_labels.py --dataset datasets/person_face
+```
+
+---
+
 ## 使用方法
 
 ### 基本的な使用
@@ -253,6 +279,11 @@ runs/detect/train/              # 保存先ディレクトリ（--nameで変更�
 ├── weights/                    # モデル重みファイル
 │   ├── best.pt                 # 最良モデル（validation精度最高）
 │   └── last.pt                 # 最終エポックのモデル
+│
+**どちらを使うべき？**
+- **学習の「再開」**: フリーズやエラーで止まった学習を「続きから」やり直す場合は **`last.pt`** を使います。
+- **後続の「フェーズ移行」**: 第1段階（Headのみ）が終わり、第2段階（全体）へ進むような場合は、最も精度の高い **`best.pt`** を土台にするのが最適です。
+
 ├── results.csv                 # トレーニング結果（CSV）
 ├── results.png                 # トレーニング結果グラフ
 ├── confusion_matrix.png        # 混同行列
