@@ -14,6 +14,7 @@
     
     # 事前学習済みモデルから
     uv run python scripts/train_yolo.py --weights runs/detect/train/weights/best.pt --epochs 50
+    uv run python scripts/train_yolo.py --weights runs/detect/train/weights/best.pt --data datasets/person_face_small/data.yaml  --freeze 10 --epochs 10
 """
 
 import argparse
