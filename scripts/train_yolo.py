@@ -40,6 +40,8 @@ def train(
     pretrained=True,
     freeze=None,
     resume=False,
+    lr0=None,
+    lrf=None,
     verbose=True
 ):
     """
@@ -182,6 +184,12 @@ def train(
         "val": True,  # 検証を実行
         "resume": resume,  # 中断した場所から再開
     }
+    
+    # 学習率の設定
+    if lr0 is not None:
+        train_params["lr0"] = lr0
+    if lrf is not None:
+        train_params["lrf"] = lrf
     
     # Freezeオプション（短時間学習用）
     if freeze is not None and freeze > 0:
@@ -331,6 +339,20 @@ def main():
         help="中断した場所から学習を再開 (last.ptが必要)"
     )
     
+    parser.add_argument(
+        "--lr0",
+        type=float,
+        default=None,
+        help="初期学習率 (デフォルト: None = モデルのデフォルト値を使用)"
+    )
+    
+    parser.add_argument(
+        "--lrf",
+        type=float,
+        default=None,
+        help="最終学習率の倍率 (Final LR = lr0 * lrf。デフォルト: None = モデルのデフォルト値を使用)"
+    )
+    
     args = parser.parse_args()
     
     # データファイルの存在確認
@@ -356,7 +378,9 @@ def main():
         exist_ok=args.exist_ok,
         pretrained=not args.no_pretrained,
         freeze=args.freeze,
-        resume=args.resume
+        resume=args.resume,
+        lr0=args.lr0,
+        lrf=args.lrf
     )
 
 

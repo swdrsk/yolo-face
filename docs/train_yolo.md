@@ -220,6 +220,8 @@ uv run python scripts/train_yolo.py --device 0,1
 | `--no-pretrained` | `False` | COCO事前学習済みモデルを使用しない |
 | `--freeze` | `None` | フリーズするレイヤー数（10推奨、0で無効） |
 | `--resume` | `False` | 中断した場所から学習を完全に再開 |
+| `--lr0` | `None` | 初期学習率（Fine-tuning時は低めに設定） |
+| `--lrf` | `None` | 最終学習率の倍率（Final LR = lr0 * lrf） |
 | `--workers` | `8` | データロードのワーカー数（Windowsエラー時は0を指定） |
 
 ## モデルサイズ
@@ -289,6 +291,33 @@ uv run python scripts/train_yolo.py --freeze 10 --epochs 30
 **推奨設定**:
 - `--freeze 10`: 最初の10レイヤーをフリーズ（バックボーン固定）
 - `--epochs 30`: 30エポック程度で十分な精度
+
+## 2段階学習（Fine-tuning）
+
+少量のデータでHeadのみを学習した後、追加データを含めて全体を微調整する場合の推奨フローです。
+
+### 第1段階: Headのみの学習（高速・土台作り）
+
+バックボーンをフリーズし、新しいデータセットのHead（検出層）を学習させます。
+
+```bash
+uv run python scripts/train_yolo.py --freeze 10 --epochs 20 --name stage1
+```
+
+### 第2段階: 全体の微調整（Fine-tuning）
+
+第1段階で得られた `best.pt` を重みとして使い、**学習率を下げて**全体を学習させます。
+
+```bash
+# 学習率を下げて（例: 0.001）再開
+uv run python scripts/train_yolo.py --weights runs/detect/stage1/weights/best.pt --lr0 0.001 --epochs 50 --name stage2
+```
+
+> [!TIP]
+> **学習率の調整**
+> - 通常、YOLOのデフォルト初期学習率は `0.01` です。
+> - Fine-tuning時はその 1/10 である `0.001` 程度から開始するのが一般的です。
+> - `lrf`（最終学習率の倍率）を調整することで、学習終了時の学習率も制御できます（デフォルトは `0.01` なので、`0.001 * 0.01 = 0.00001` が最終学習率になります）。
 
 ## 出力
 
